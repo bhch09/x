@@ -11,13 +11,13 @@ import {
   remove, 
   serverTimestamp,
   query,
-  orderByChild 
+  orderByChild,
+  onDisconnect as fbOnDisconnect
 } from 'firebase/database';
 import styled, { createGlobalStyle, ThemeProvider } from 'styled-components';
 import { FiSend, FiLogOut, FiTrash2, FiImage, FiCheck } from 'react-icons/fi';
 import { BsEmojiSmile, BsReply } from 'react-icons/bs';
-import data from '@emoji-mart/data';
-import Picker from '@emoji-mart/react';
+import Emoji from 'react-emoji-render';
 import TextareaAutosize from 'react-textarea-autosize';
 
 // Firebase config
@@ -73,15 +73,15 @@ const GlobalStyle = createGlobalStyle`
 // Styled components
 const Container = styled.div`
   height: 100vh;
-  max-width: 100%;
+  width: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   
   @media (min-width: 768px) {
-    max-width: 800px;
+    width: 100%;
+    max-width: 100%;
     height: 100vh;
-    box-shadow: 0 0 20px rgba(0,0,0,0.2);
   }
 `;
 
@@ -367,13 +367,34 @@ const EmojiPickerContainer = styled.div`
   bottom: 80px;
   right: 20px;
   z-index: 100;
+  background-color: ${props => props.theme.primary};
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  padding: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 10px;
   
   @media (max-width: 480px) {
     right: 10px;
     width: 90%;
-    em-emoji-picker {
-      width: 100%;
-    }
+    grid-template-columns: repeat(6, 1fr);
+  }
+`;
+
+const EmojiButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: ${props => props.theme.secondary};
   }
 `;
 
@@ -469,6 +490,14 @@ const formatDate = (timestamp) => {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
 
+// Common emoji list for quick selection
+const commonEmojis = [
+  '😀', '😂', '😊', '😍', '🥰', '😎', '😭', '😢', '🙄', '😴', 
+  '👍', '👎', '👏', '🙏', '🔥', '❤️', '💕', '💯', '✅', '🎉',
+  '🤔', '🤣', '😅', '😁', '😉', '😋', '😘', '🤗', '😪', '😱',
+  '👋', '🤝', '✌️', '👌', '🤞', '🙌', '💪', '👀', '🧠', '💩'
+];
+
 // Main component
 export default function App() {
   // State
@@ -481,6 +510,7 @@ export default function App() {
   const [userTyping, setUserTyping] = useState(null);
   const [image, setImage] = useState(null);
   const [fullscreenImage, setFullscreenImage] = useState(null);
+  const [windowFocus, setWindowFocus] = useState(true);
   
   const messageListRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -490,36 +520,68 @@ export default function App() {
   const messagesRef = ref(database, 'messages');
   const statusRef = ref(database, 'status');
   const typingRef = ref(database, 'typing');
+  const presenceRef = ref(database, 'presence');
 
-  // Listen for user login/logout
+  // Track window focus for accurate online status
+  useEffect(() => {
+    const handleFocus = () => setWindowFocus(true);
+    const handleBlur = () => setWindowFocus(false);
+    
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
+  // Update presence status based on window focus
+  useEffect(() => {
+    if (user) {
+      const userPresenceRef = ref(database, `presence/${user}`);
+      set(userPresenceRef, windowFocus);
+    }
+  }, [windowFocus, user]);
+
+  // Listen for user login/logout and handle disconnects
   useEffect(() => {
     if (user) {
       // Update user status when logged in
       const userStatusRef = ref(database, `status/${user}`);
       set(userStatusRef, true);
-
-      // Set up a cleanup function for when user logs out or disconnects
-      const userStatusDisconnectRef = ref(database, `status/${user}`);
-      const onDisconnect = onValue(userStatusDisconnectRef, (snapshot) => {
-        set(userStatusDisconnectRef, false);
-      });
+      
+      // Set up disconnect handler
+      const userPresenceRef = ref(database, `presence/${user}`);
+      set(userPresenceRef, true);
+      fbOnDisconnect(userStatusRef).set(false);
+      fbOnDisconnect(userPresenceRef).set(false);
 
       return () => {
         // Cleanup function for component unmount
         set(userStatusRef, false);
+        set(userPresenceRef, false);
       };
     }
   }, [user]);
 
   // Listen for status changes
   useEffect(() => {
-    const unsubscribe = onValue(statusRef, (snapshot) => {
+    const statusUnsubscribe = onValue(statusRef, (snapshot) => {
       if (snapshot.exists()) {
         setUserStatus(snapshot.val());
       }
     });
+    
+    const presenceUnsubscribe = onValue(presenceRef, (snapshot) => {
+      // This will be used for real-time presence (active in window)
+      // The UI will use this for showing "online" status
+    });
 
-    return () => unsubscribe();
+    return () => {
+      statusUnsubscribe();
+      presenceUnsubscribe();
+    };
   }, []);
 
   // Listen for typing status
@@ -554,8 +616,8 @@ export default function App() {
       setMessages(messagesData);
       setTimeout(scrollToBottom, 100);
       
-      // Mark messages as read
-      if (user) {
+      // Only mark messages as read if window is focused
+      if (user && windowFocus) {
         messagesData.forEach(message => {
           if (message.sender !== user && !message.read) {
             const messageRef = ref(database, `messages/${message.id}`);
@@ -566,7 +628,7 @@ export default function App() {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, windowFocus]);
 
   // Login handler
   const handleLogin = (selectedUser) => {
@@ -611,7 +673,6 @@ export default function App() {
 
     setMessageInput('');
     setImage(null);
-    setIsTyping(false);
     
     // Stop typing indicator
     const typingUserRef = ref(database, `typing/${user}`);
@@ -656,8 +717,8 @@ export default function App() {
   };
 
   // Add emoji to message
-  const addEmoji = (e) => {
-    setMessageInput(prev => prev + e.native);
+  const addEmoji = (emoji) => {
+    setMessageInput(prev => prev + emoji);
     setShowEmojiPicker(false);
   };
 
@@ -718,8 +779,17 @@ export default function App() {
             {user === 'R' ? 'Chat with User B' : 'Chat with User R'}
           </HeaderTitle>
           <HeaderStatus>
-            <StatusDot $online={user === 'R' ? userStatus.B : userStatus.R} />
-            <span>{user === 'R' ? (userStatus.B ? 'Online' : 'Offline') : (userStatus.R ? 'Online' : 'Offline')}</span>
+            <StatusDot $online={user === 'R' ? (userStatus.B && windowFocus) : (userStatus.R && windowFocus)} />
+            <span>
+              {user === 'R' 
+                ? (userStatus.B 
+                  ? (windowFocus ? 'Online' : 'Away') 
+                  : 'Offline')
+                : (userStatus.R 
+                  ? (windowFocus ? 'Online' : 'Away') 
+                  : 'Offline')
+              }
+            </span>
           </HeaderStatus>
           <ActionButtons>
             <IconButton onClick={handleDeleteChat} title="Delete Chat">
@@ -754,7 +824,7 @@ export default function App() {
                         </ReplyContainer>
                       )}
                       
-                      {message.text && <MessageText>{message.text}</MessageText>}
+                      {message.text && <MessageText><Emoji text={message.text} /></MessageText>}
                       
                       {message.image && (
                         <MessageImage 
@@ -775,16 +845,13 @@ export default function App() {
                       {formatTime(message.timestamp)}
                       {isSent && (
                         <ReadReceipt>
-                          {message.read ? (
+                          {message.read && (userStatus[user === 'R' ? 'B' : 'R']) ? (
                             <>
                               <FiCheck style={{ color: '#4CAF50' }} />
                               <FiCheck style={{ color: '#4CAF50' }} />
                             </>
                           ) : (
-                            <>
-                              <FiCheck />
-                              <FiCheck />
-                            </>
+                            <FiCheck />
                           )}
                         </ReadReceipt>
                       )}
@@ -851,12 +918,14 @@ export default function App() {
           
           {showEmojiPicker && (
             <EmojiPickerContainer>
-              <Picker 
-                data={data} 
-                onEmojiSelect={addEmoji}
-                theme="dark"
-                set="google"
-              />
+              {commonEmojis.map((emoji, index) => (
+                <EmojiButton 
+                  key={index} 
+                  onClick={() => addEmoji(emoji)}
+                >
+                  {emoji}
+                </EmojiButton>
+              ))}
             </EmojiPickerContainer>
           )}
         </InputArea>

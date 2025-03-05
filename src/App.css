@@ -1,19 +1,20 @@
 
-/* Additional responsive styles for the app */
-@media (max-width: 768px) {
-  html, body, #root {
-    height: 100%;
-    overflow: hidden;
-  }
-}
-
-@media (max-width: 480px) {
-  .emoji-mart {
-    width: 280px !important;
-  }
+/* Global styles for fullscreen layout */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 /* Fix for mobile double-click */
 * {
   touch-action: manipulation;
+}
+
+/* Make all elements responsive */
+img, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
 }
