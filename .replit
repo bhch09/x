@@ -15,11 +15,15 @@ build = ["npm", "run", "build"]
 publicDir = "dist"
 
 [[ports]]
+localPort = 3001
+externalPort = 3001
+
+[[ports]]
 localPort = 5173
 externalPort = 80
 
 [workflows]
-runButton = "Run"
+runButton = "Run Chat App"
 
 [[workflows.workflow]]
 name = "Run Chat App"
