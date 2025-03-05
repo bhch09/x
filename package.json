@@ -6,7 +6,7 @@
   "description": "React TypeScript on Replit, using Vite bundler",
   "scripts": {
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build",
+    "deploy": "gh-pages -d dist",
     "dev": "vite --host 0.0.0.0",
     "start": "npm run build && node server.js",
     "build": "vite build",
