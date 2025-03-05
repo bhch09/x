@@ -1,23 +1,60 @@
+
 import { createServer } from 'http';
-import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const app = express();
-const server = createServer(app);
+const MIME_TYPES = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+};
 
-// In production, serve the static files from the dist directory
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(join(__dirname, 'dist')));
-  app.get('*', (req, res) => {
-    res.sendFile(join(__dirname, 'dist', 'index.html'));
+const server = createServer((req, res) => {
+  console.log(`${req.method} ${req.url}`);
+  
+  // Handle the root path
+  let filePath = req.url === '/' 
+    ? join(__dirname, 'dist', 'index.html')
+    : join(__dirname, 'dist', req.url);
+  
+  const extname = String(filePath.split('.').pop()).toLowerCase();
+  const contentType = MIME_TYPES[`.${extname}`] || 'application/octet-stream';
+  
+  fs.readFile(filePath, (err, content) => {
+    if (err) {
+      if (err.code === 'ENOENT') {
+        // Try to serve index.html for client-side routing
+        fs.readFile(join(__dirname, 'dist', 'index.html'), (err, content) => {
+          if (err) {
+            res.writeHead(404);
+            res.end('Page not found');
+            return;
+          }
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end(content, 'utf-8');
+        });
+      } else {
+        res.writeHead(500);
+        res.end(`Server Error: ${err.code}`);
+      }
+      return;
+    }
+    
+    res.writeHead(200, { 'Content-Type': contentType });
+    res.end(content, 'utf-8');
   });
-}
+});
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running at http://0.0.0.0:${PORT}/`);
 });
