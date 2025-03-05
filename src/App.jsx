@@ -54,19 +54,30 @@ const GlobalStyle = createGlobalStyle`
     padding: 0;
     box-sizing: border-box;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  html {
+    height: -webkit-fill-available;
   }
   
   body {
     background-color: ${props => props.theme.background};
     color: ${props => props.theme.text};
     height: 100vh;
+    height: -webkit-fill-available;
     overflow: hidden;
+    position: fixed;
+    width: 100%;
+    touch-action: manipulation;
   }
   
   #root {
     height: 100vh;
+    height: -webkit-fill-available;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 `;
 
@@ -77,11 +88,23 @@ const Container = styled.div`
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
   
   @media (min-width: 768px) {
     width: 100%;
     max-width: 100%;
     height: 100vh;
+  }
+  
+  @media (max-width: 480px) {
+    height: 100vh;
+    /* Fix for mobile browsers with address bar */
+    height: -webkit-fill-available;
   }
 `;
 
@@ -365,22 +388,78 @@ const IconActionButton = styled.button`
 const EmojiPickerContainer = styled.div`
   position: absolute;
   bottom: 80px;
-  right: 20px;
+  right: 15px;
+  left: 15px;
   z-index: 100;
   background-color: ${props => props.theme.primary};
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0,0,0,0.3);
   padding: 10px;
-  max-height: 200px;
-  overflow-y: auto;
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 10px;
+  max-height: 300px;
+  display: flex;
+  flex-direction: column;
   
   @media (max-width: 480px) {
-    right: 10px;
-    width: 90%;
+    bottom: 70px;
+  }
+`;
+
+const EmojiCategoryTabs = styled.div`
+  display: flex;
+  overflow-x: auto;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  
+  &::-webkit-scrollbar {
+    height: 3px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${props => props.theme.secondary};
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${props => props.theme.accent};
+    border-radius: 3px;
+  }
+`;
+
+const EmojiCategoryTab = styled.button`
+  background: ${props => props.$active ? props.theme.secondary : 'none'};
+  border: none;
+  padding: 5px 10px;
+  white-space: nowrap;
+  border-radius: 4px;
+  margin-right: 5px;
+  color: ${props => props.theme.text};
+  font-size: 0.9rem;
+  cursor: pointer;
+`;
+
+const EmojiGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+  overflow-y: auto;
+  padding: 5px;
+  height: 200px;
+  
+  &::-webkit-scrollbar {
+    width: 5px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${props => props.theme.secondary};
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${props => props.theme.accent};
+    border-radius: 3px;
+  }
+  
+  @media (max-width: 480px) {
     grid-template-columns: repeat(6, 1fr);
+    height: 180px;
   }
 `;
 
@@ -770,6 +849,27 @@ export default function App() {
     return groups;
   }, {});
 
+  // Auto-scroll when typing indicator appears
+  useEffect(() => {
+    if (userTyping) {
+      scrollToBottom();
+    }
+  }, [userTyping]);
+
+  // Improved emoji picker
+  const emojiCategories = {
+    'Smileys': ['😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😊', '😋', '😎'],
+    'People': ['👍', '👎', '👌', '✌️', '🤞', '🙌', '👏', '🙏', '🤝', '💪', '👀'],
+    'Animals': ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🦁', '🐯'],
+    'Food': ['🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍈', '🍒', '🍑', '🥭'],
+    'Activities': ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱', '🏓', '🏸', '🥅', '🏒'],
+    'Travel': ['✈️', '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🛴'],
+    'Objects': ['💻', '📱', '📷', '🎮', '🎧', '🎬', '🏆', '🎵', '🔔', '🎁', '💡', '📚'],
+    'Symbols': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '❣️', '💕', '💞', '💓', '💗'],
+  };
+
+  const [activeEmojiCategory, setActiveEmojiCategory] = useState('Smileys');
+
   return (
     <ThemeProvider theme={theme}>
       <GlobalStyle />
@@ -779,14 +879,14 @@ export default function App() {
             {user === 'R' ? 'Chat with User B' : 'Chat with User R'}
           </HeaderTitle>
           <HeaderStatus>
-            <StatusDot $online={user === 'R' ? (userStatus.B && windowFocus) : (userStatus.R && windowFocus)} />
+            <StatusDot $online={user === 'R' ? userStatus.B : userStatus.R} />
             <span>
               {user === 'R' 
                 ? (userStatus.B 
-                  ? (windowFocus ? 'Online' : 'Away') 
+                  ? 'Online' 
                   : 'Offline')
                 : (userStatus.R 
-                  ? (windowFocus ? 'Online' : 'Away') 
+                  ? 'Online' 
                   : 'Offline')
               }
             </span>
@@ -810,6 +910,7 @@ export default function App() {
               {dateMessages.map((message) => {
                 const isSent = message.sender === user;
                 const replyMessage = message.replyTo && messages.find(m => m.id === message.replyTo);
+                const otherUser = user === 'R' ? 'B' : 'R';
                 
                 return (
                   <MessageGroup key={message.id} $sent={isSent}>
@@ -845,13 +946,16 @@ export default function App() {
                       {formatTime(message.timestamp)}
                       {isSent && (
                         <ReadReceipt>
-                          {message.read && (userStatus[user === 'R' ? 'B' : 'R']) ? (
+                          {message.read ? (
                             <>
                               <FiCheck style={{ color: '#4CAF50' }} />
                               <FiCheck style={{ color: '#4CAF50' }} />
                             </>
                           ) : (
-                            <FiCheck />
+                            <>
+                              <FiCheck />
+                              {userStatus[otherUser] && <FiCheck />}
+                            </>
                           )}
                         </ReadReceipt>
                       )}
@@ -918,14 +1022,27 @@ export default function App() {
           
           {showEmojiPicker && (
             <EmojiPickerContainer>
-              {commonEmojis.map((emoji, index) => (
-                <EmojiButton 
-                  key={index} 
-                  onClick={() => addEmoji(emoji)}
-                >
-                  {emoji}
-                </EmojiButton>
-              ))}
+              <EmojiCategoryTabs>
+                {Object.keys(emojiCategories).map(category => (
+                  <EmojiCategoryTab 
+                    key={category}
+                    $active={activeEmojiCategory === category}
+                    onClick={() => setActiveEmojiCategory(category)}
+                  >
+                    {category}
+                  </EmojiCategoryTab>
+                ))}
+              </EmojiCategoryTabs>
+              <EmojiGrid>
+                {emojiCategories[activeEmojiCategory].map((emoji, index) => (
+                  <EmojiButton 
+                    key={index} 
+                    onClick={() => addEmoji(emoji)}
+                  >
+                    {emoji}
+                  </EmojiButton>
+                ))}
+              </EmojiGrid>
             </EmojiPickerContainer>
           )}
         </InputArea>
