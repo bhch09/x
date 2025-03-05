@@ -17,7 +17,7 @@ import {
 import styled, { createGlobalStyle, ThemeProvider } from 'styled-components';
 import { FiSend, FiLogOut, FiTrash2, FiImage, FiCheck } from 'react-icons/fi';
 import { BsEmojiSmile, BsReply } from 'react-icons/bs';
-import { RiGifLine } from 'react-icons/ri';
+import { RiFileGifLine } from 'react-icons/ri';
 import Emoji from 'react-emoji-render';
 import TextareaAutosize from 'react-textarea-autosize';
 import EmojiPicker from 'emoji-picker-react';
@@ -1124,7 +1124,7 @@ const GiphySearchInput = styled.input`
                 if (showEmojiPicker) setShowEmojiPicker(false);
               }}
             >
-              <RiGifLine />
+              <RiFileGifLine />
             </IconActionButton>
             
             <TextInput
