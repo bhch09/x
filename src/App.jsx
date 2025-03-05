@@ -17,8 +17,12 @@ import {
 import styled, { createGlobalStyle, ThemeProvider } from 'styled-components';
 import { FiSend, FiLogOut, FiTrash2, FiImage, FiCheck } from 'react-icons/fi';
 import { BsEmojiSmile, BsReply } from 'react-icons/bs';
+import { RiGifLine } from 'react-icons/ri';
 import Emoji from 'react-emoji-render';
 import TextareaAutosize from 'react-textarea-autosize';
+import EmojiPicker from 'emoji-picker-react';
+import { GiphyFetch } from '@giphy/js-fetch-api';
+import { Carousel } from '@giphy/react-components';
 
 // Firebase config
 const firebaseConfig = {
@@ -313,6 +317,10 @@ const TypingIndicator = styled.div`
   align-self: flex-start;
   margin-bottom: 10px;
   font-style: italic;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  width: fit-content;
 `;
 
 const InputArea = styled.div`
@@ -585,6 +593,8 @@ export default function App() {
   const [messageInput, setMessageInput] = useState('');
   const [userStatus, setUserStatus] = useState({ R: false, B: false });
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [gifSearchQuery, setGifSearchQuery] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [userTyping, setUserTyping] = useState(null);
   const [image, setImage] = useState(null);
@@ -593,6 +603,7 @@ export default function App() {
   
   const messageListRef = useRef(null);
   const fileInputRef = useRef(null);
+  const inputRef = useRef(null);
   let typingTimeout = useRef(null);
 
   // Firebase references
@@ -758,6 +769,40 @@ export default function App() {
     set(typingUserRef, false);
     
     clearTimeout(typingTimeout.current);
+    
+    // Focus the input again on mobile to prevent keyboard retraction
+    if (window.innerWidth <= 768 && inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+  
+  // Send GIF message handler
+  const sendGif = (gif) => {
+    if (!user) return;
+    
+    const gifUrl = gif.images.original.url;
+    
+    const messageData = {
+      text: '',
+      image: gifUrl,
+      sender: user,
+      timestamp: Date.now(),
+      read: false,
+      isGif: true
+    };
+    
+    if (replyTo) {
+      messageData.replyTo = replyTo.id;
+      setReplyTo(null);
+    }
+    
+    const newMessageRef = push(messagesRef);
+    set(newMessageRef, messageData);
+    
+    // Focus the input again on mobile to prevent keyboard retraction
+    if (window.innerWidth <= 768 && inputRef.current) {
+      inputRef.current.focus();
+    }
   };
 
   // Typing indicator handler
@@ -856,17 +901,66 @@ export default function App() {
     }
   }, [userTyping]);
 
-  // Improved emoji picker
-  const emojiCategories = {
-    'Smileys': ['😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😊', '😋', '😎'],
-    'People': ['👍', '👎', '👌', '✌️', '🤞', '🙌', '👏', '🙏', '🤝', '💪', '👀'],
-    'Animals': ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🦁', '🐯'],
-    'Food': ['🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍈', '🍒', '🍑', '🥭'],
-    'Activities': ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱', '🏓', '🏸', '🥅', '🏒'],
-    'Travel': ['✈️', '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🛴'],
-    'Objects': ['💻', '📱', '📷', '🎮', '🎧', '🎬', '🏆', '🎵', '🔔', '🎁', '💡', '📚'],
-    'Symbols': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '❣️', '💕', '💞', '💓', '💗'],
-  };
+  // GIPHY API setup
+const giphyFetch = new GiphyFetch('ysF7szZaXxSrJyQYsesL9EjFZwSHtv8j'); // Using a public API key
+
+// Emoji picker component styling
+const EmojiPickerWrapper = styled.div`
+  position: absolute;
+  bottom: 80px;
+  right: 15px;
+  z-index: 100;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+
+  @media (max-width: 480px) {
+    bottom: 70px;
+    left: 15px;
+    right: 15px;
+    width: auto;
+  }
+
+  & .EmojiPickerReact {
+    --epr-bg-color: ${props => props.theme.primary};
+    --epr-category-label-bg-color: ${props => props.theme.secondary};
+    --epr-text-color: ${props => props.theme.text};
+    --epr-search-input-bg-color: ${props => props.theme.secondary};
+    --epr-hover-bg-color: ${props => props.theme.secondary};
+    height: 350px !important;
+    width: 100% !important;
+  }
+`;
+
+const GiphyPickerContainer = styled.div`
+  position: absolute;
+  bottom: 80px;
+  right: 15px;
+  left: 15px;
+  z-index: 100;
+  background-color: ${props => props.theme.primary};
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  padding: 10px;
+  max-height: 350px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  
+  @media (max-width: 480px) {
+    bottom: 70px;
+  }
+`;
+
+const GiphySearchInput = styled.input`
+  background-color: ${props => props.theme.secondary};
+  color: ${props => props.theme.text};
+  border: none;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  width: 100%;
+  outline: none;
+`;
 
   const [activeEmojiCategory, setActiveEmojiCategory] = useState('Smileys');
 
@@ -928,11 +1022,27 @@ export default function App() {
                       {message.text && <MessageText><Emoji text={message.text} /></MessageText>}
                       
                       {message.image && (
-                        <MessageImage 
-                          src={message.image} 
-                          alt="Shared media" 
-                          onClick={() => setFullscreenImage(message.image)}
-                        />
+                        <>
+                          <MessageImage 
+                            src={message.image} 
+                            alt={message.isGif ? "GIF" : "Shared media"} 
+                            onClick={() => setFullscreenImage(message.image)}
+                          />
+                          {message.isGif && (
+                            <span style={{ 
+                              fontSize: '0.7rem', 
+                              backgroundColor: 'rgba(0,0,0,0.5)',
+                              color: 'white',
+                              padding: '2px 5px',
+                              borderRadius: '3px',
+                              position: 'absolute',
+                              bottom: '5px',
+                              left: '5px'
+                            }}>
+                              GIF
+                            </span>
+                          )}
+                        </>
                       )}
                       
                       <MessageActions className="message-actions">
@@ -948,14 +1058,11 @@ export default function App() {
                         <ReadReceipt>
                           {message.read ? (
                             <>
-                              <FiCheck style={{ color: '#4CAF50' }} />
+                              <FiCheck style={{ color: '#4CAF50', marginRight: '-4px' }} />
                               <FiCheck style={{ color: '#4CAF50' }} />
                             </>
                           ) : (
-                            <>
-                              <FiCheck />
-                              {userStatus[otherUser] && <FiCheck />}
-                            </>
+                            <FiCheck />
                           )}
                         </ReadReceipt>
                       )}
@@ -1002,11 +1109,26 @@ export default function App() {
               />
             </IconActionButton>
             
-            <IconActionButton onClick={() => setShowEmojiPicker(!showEmojiPicker)}>
+            <IconActionButton 
+              onClick={() => {
+                setShowEmojiPicker(!showEmojiPicker);
+                if (showGifPicker) setShowGifPicker(false);
+              }}
+            >
               <BsEmojiSmile />
             </IconActionButton>
             
+            <IconActionButton 
+              onClick={() => {
+                setShowGifPicker(!showGifPicker);
+                if (showEmojiPicker) setShowEmojiPicker(false);
+              }}
+            >
+              <RiGifLine />
+            </IconActionButton>
+            
             <TextInput
+              ref={inputRef}
               value={messageInput}
               onChange={handleTyping}
               onKeyDown={handleKeyPress}
@@ -1021,29 +1143,44 @@ export default function App() {
           </InputContainer>
           
           {showEmojiPicker && (
-            <EmojiPickerContainer>
-              <EmojiCategoryTabs>
-                {Object.keys(emojiCategories).map(category => (
-                  <EmojiCategoryTab 
-                    key={category}
-                    $active={activeEmojiCategory === category}
-                    onClick={() => setActiveEmojiCategory(category)}
-                  >
-                    {category}
-                  </EmojiCategoryTab>
-                ))}
-              </EmojiCategoryTabs>
-              <EmojiGrid>
-                {emojiCategories[activeEmojiCategory].map((emoji, index) => (
-                  <EmojiButton 
-                    key={index} 
-                    onClick={() => addEmoji(emoji)}
-                  >
-                    {emoji}
-                  </EmojiButton>
-                ))}
-              </EmojiGrid>
-            </EmojiPickerContainer>
+            <EmojiPickerWrapper>
+              <EmojiPicker
+                onEmojiClick={(emojiObj) => {
+                  setMessageInput(prev => prev + emojiObj.emoji);
+                  // Don't close picker after selection so user can pick multiple emojis
+                }}
+                searchDisabled={false}
+                lazyLoadEmojis={true}
+                skinTonesDisabled={false}
+              />
+            </EmojiPickerWrapper>
+          )}
+          
+          {showGifPicker && (
+            <GiphyPickerContainer>
+              <GiphySearchInput
+                type="text"
+                value={gifSearchQuery}
+                onChange={(e) => setGifSearchQuery(e.target.value)}
+                placeholder="Search for GIFs..."
+              />
+              <div style={{ overflow: 'auto', flex: 1 }}>
+                <Carousel
+                  fetchGifs={(offset) => 
+                    gifSearchQuery 
+                      ? giphyFetch.search(gifSearchQuery, { offset, limit: 10 })
+                      : giphyFetch.trending({ offset, limit: 10 })
+                  }
+                  onGifClick={(gif) => {
+                    sendGif(gif);
+                    setShowGifPicker(false);
+                  }}
+                  width={window.innerWidth > 480 ? window.innerWidth * 0.4 : window.innerWidth - 50}
+                  columns={window.innerWidth > 480 ? 3 : 2}
+                  gutter={6}
+                />
+              </div>
+            </GiphyPickerContainer>
           )}
         </InputArea>
         
