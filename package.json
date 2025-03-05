@@ -5,6 +5,8 @@
   "description": "React TypeScript on Replit, using Vite bundler",
   "scripts": {
     "dev": "vite",
+    "server": "node server.js",
+    "start": "concurrently \"npm run server\" \"npm run dev\"",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -19,5 +21,16 @@
     "react-dom": "^18.2.0",
     "typescript": "^5.2.2",
     "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "@emoji-mart/data": "^1.1.2",
+    "@emoji-mart/react": "^1.1.1",
+    "concurrently": "^9.1.2",
+    "emoji-mart": "^5.5.2",
+    "react-icons": "^4.12.0",
+    "react-textarea-autosize": "^8.5.3",
+    "socket.io": "^4.7.2",
+    "socket.io-client": "^4.7.2",
+    "styled-components": "^6.1.1"
   }
 }
