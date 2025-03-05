@@ -1,2 +1,19 @@
 
-/* Base styling for app handled by styled-components */
+/* Additional responsive styles for the app */
+@media (max-width: 768px) {
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 480px) {
+  .emoji-mart {
+    width: 280px !important;
+  }
+}
+
+/* Fix for mobile double-click */
+* {
+  touch-action: manipulation;
+}

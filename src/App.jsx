@@ -1,12 +1,39 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
+import { initializeApp } from 'firebase/app';
+import { 
+  getDatabase, 
+  ref, 
+  onValue, 
+  push, 
+  set, 
+  update, 
+  remove, 
+  serverTimestamp,
+  query,
+  orderByChild 
+} from 'firebase/database';
 import styled, { createGlobalStyle, ThemeProvider } from 'styled-components';
 import { FiSend, FiLogOut, FiTrash2, FiImage, FiCheck } from 'react-icons/fi';
 import { BsEmojiSmile, BsReply } from 'react-icons/bs';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import TextareaAutosize from 'react-textarea-autosize';
+
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyCmqS52ypihassF4hYlFnfNr5VMxxlYsis",
+  authDomain: "project-6a7c4.firebaseapp.com",
+  databaseURL: "https://project-6a7c4-default-rtdb.firebaseio.com",
+  projectId: "project-6a7c4",
+  storageBucket: "project-6a7c4.appspot.com",
+  messagingSenderId: "152367969169",
+  appId: "1:152367969169:web:6bc05a9d8152391e07e030"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
 
 // Theme
 const theme = {
@@ -50,6 +77,12 @@ const Container = styled.div`
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+  
+  @media (min-width: 768px) {
+    max-width: 800px;
+    height: 100vh;
+    box-shadow: 0 0 20px rgba(0,0,0,0.2);
+  }
 `;
 
 const LoginContainer = styled.div`
@@ -60,12 +93,14 @@ const LoginContainer = styled.div`
   align-items: center;
   gap: 20px;
   background-color: ${props => props.theme.background};
+  padding: 0 20px;
 `;
 
 const LoginTitle = styled.h1`
   font-size: 2rem;
   margin-bottom: 20px;
   color: ${props => props.theme.text};
+  text-align: center;
 `;
 
 const UserButton = styled.button`
@@ -76,8 +111,10 @@ const UserButton = styled.button`
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
-  background-color: ${props => props.theme[props.userColor]};
+  background-color: ${props => props.$userColor === 'R' ? props.theme.userR : props.theme.userB};
   color: white;
+  width: 100%;
+  max-width: 250px;
   
   &:hover {
     transform: scale(1.05);
@@ -96,6 +133,10 @@ const Header = styled.header`
 
 const HeaderTitle = styled.h1`
   font-size: 1.2rem;
+  
+  @media (max-width: 480px) {
+    font-size: 1rem;
+  }
 `;
 
 const HeaderStatus = styled.div`
@@ -107,7 +148,7 @@ const StatusDot = styled.div`
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background-color: ${props => props.online ? '#4CAF50' : '#9e9e9e'};
+  background-color: ${props => props.$online ? '#4CAF50' : '#9e9e9e'};
   margin-right: 5px;
 `;
 
@@ -159,7 +200,7 @@ const MessageList = styled.div`
 const MessageGroup = styled.div`
   display: flex;
   flex-direction: column;
-  align-items: ${props => props.sent ? 'flex-end' : 'flex-start'};
+  align-items: ${props => props.$sent ? 'flex-end' : 'flex-start'};
   margin-bottom: 15px;
 `;
 
@@ -168,8 +209,8 @@ const MessageBubble = styled.div`
   padding: 12px 15px;
   border-radius: 18px;
   background-color: ${props => {
-    if (props.sent) {
-      return props.theme[props.userColor];
+    if (props.$sent) {
+      return props.theme[props.$userColor === 'R' ? 'userR' : 'userB'];
     }
     return props.theme.secondary;
   }};
@@ -179,6 +220,11 @@ const MessageBubble = styled.div`
   
   &:hover .message-actions {
     opacity: 1;
+  }
+  
+  @media (max-width: 480px) {
+    max-width: 85%;
+    padding: 10px 12px;
   }
 `;
 
@@ -321,6 +367,14 @@ const EmojiPickerContainer = styled.div`
   bottom: 80px;
   right: 20px;
   z-index: 100;
+  
+  @media (max-width: 480px) {
+    right: 10px;
+    width: 90%;
+    em-emoji-picker {
+      width: 100%;
+    }
+  }
 `;
 
 const ReplyPreview = styled.div`
@@ -403,13 +457,15 @@ const FullscreenImageContent = styled.img`
 `;
 
 // Helper function to format date
-const formatTime = (dateString) => {
-  const date = new Date(dateString);
+const formatTime = (timestamp) => {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-const formatDate = (dateString) => {
-  const date = new Date(dateString);
+const formatDate = (timestamp) => {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
 
@@ -417,13 +473,11 @@ const formatDate = (dateString) => {
 export default function App() {
   // State
   const [user, setUser] = useState(localStorage.getItem('chatUser') || null);
-  const [socket, setSocket] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState('');
-  const [userStatus, setUserStatus] = useState({ R: { online: false }, B: { online: false } });
+  const [userStatus, setUserStatus] = useState({ R: false, B: false });
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [replyTo, setReplyTo] = useState(null);
-  const [isTyping, setIsTyping] = useState(false);
   const [userTyping, setUserTyping] = useState(null);
   const [image, setImage] = useState(null);
   const [fullscreenImage, setFullscreenImage] = useState(null);
@@ -432,112 +486,137 @@ export default function App() {
   const fileInputRef = useRef(null);
   let typingTimeout = useRef(null);
 
-  // Connect to socket
-  useEffect(() => {
-    // Create socket connection
-    const newSocket = io(window.location.hostname === 'localhost' ? 'http://localhost:3001' : window.location.origin);
-    setSocket(newSocket);
+  // Firebase references
+  const messagesRef = ref(database, 'messages');
+  const statusRef = ref(database, 'status');
+  const typingRef = ref(database, 'typing');
 
-    // Cleanup on unmount
-    return () => {
-      newSocket.disconnect();
-    };
+  // Listen for user login/logout
+  useEffect(() => {
+    if (user) {
+      // Update user status when logged in
+      const userStatusRef = ref(database, `status/${user}`);
+      set(userStatusRef, true);
+
+      // Set up a cleanup function for when user logs out or disconnects
+      const userStatusDisconnectRef = ref(database, `status/${user}`);
+      const onDisconnect = onValue(userStatusDisconnectRef, (snapshot) => {
+        set(userStatusDisconnectRef, false);
+      });
+
+      return () => {
+        // Cleanup function for component unmount
+        set(userStatusRef, false);
+      };
+    }
+  }, [user]);
+
+  // Listen for status changes
+  useEffect(() => {
+    const unsubscribe = onValue(statusRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setUserStatus(snapshot.val());
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  // Handle socket events
+  // Listen for typing status
   useEffect(() => {
-    if (!socket) return;
-
-    // Login if user is already set
-    if (user) {
-      socket.emit('login', user);
-    }
-
-    // Listen for messages and updates
-    socket.on('initialMessages', (initialMessages) => {
-      setMessages(initialMessages);
-      setTimeout(scrollToBottom, 100);
-    });
-
-    socket.on('newMessage', (message) => {
-      setMessages(prev => [...prev, message]);
-      if (message.sender !== user) {
-        socket.emit('markAsRead', message.id);
-      }
-      setTimeout(scrollToBottom, 100);
-    });
-
-    socket.on('messageRead', (messageId) => {
-      setMessages(prev => prev.map(msg => 
-        msg.id === messageId ? { ...msg, read: true } : msg
-      ));
-    });
-
-    socket.on('userStatus', (status) => {
-      setUserStatus(status);
-    });
-
-    socket.on('userTyping', (data) => {
-      if (data.user !== user) {
-        setUserTyping(data.isTyping ? data.user : null);
+    const unsubscribe = onValue(typingRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const typingUsers = snapshot.val();
+        if (user && typingUsers) {
+          const otherUser = user === 'R' ? 'B' : 'R';
+          setUserTyping(typingUsers[otherUser] ? otherUser : null);
+        }
       }
     });
 
-    socket.on('chatDeleted', () => {
-      setMessages([]);
+    return () => unsubscribe();
+  }, [user]);
+
+  // Listen for messages
+  useEffect(() => {
+    const messagesQuery = query(messagesRef, orderByChild('timestamp'));
+    
+    const unsubscribe = onValue(messagesQuery, (snapshot) => {
+      const messagesData = [];
+      snapshot.forEach((childSnapshot) => {
+        const message = {
+          id: childSnapshot.key,
+          ...childSnapshot.val()
+        };
+        messagesData.push(message);
+      });
+      
+      setMessages(messagesData);
+      setTimeout(scrollToBottom, 100);
+      
+      // Mark messages as read
+      if (user) {
+        messagesData.forEach(message => {
+          if (message.sender !== user && !message.read) {
+            const messageRef = ref(database, `messages/${message.id}`);
+            update(messageRef, { read: true });
+          }
+        });
+      }
     });
 
-    return () => {
-      socket.off('initialMessages');
-      socket.off('newMessage');
-      socket.off('messageRead');
-      socket.off('userStatus');
-      socket.off('userTyping');
-      socket.off('chatDeleted');
-    };
-  }, [socket, user]);
+    return () => unsubscribe();
+  }, [user]);
 
   // Login handler
   const handleLogin = (selectedUser) => {
     setUser(selectedUser);
     localStorage.setItem('chatUser', selectedUser);
-    if (socket) {
-      socket.emit('login', selectedUser);
-    }
+    
+    // Update user status when logged in
+    const userStatusRef = ref(database, `status/${selectedUser}`);
+    set(userStatusRef, true);
   };
 
   // Logout handler
   const handleLogout = () => {
-    if (socket) {
-      socket.emit('logout');
+    if (user) {
+      const userStatusRef = ref(database, `status/${user}`);
+      set(userStatusRef, false);
+      
+      localStorage.removeItem('chatUser');
+      setUser(null);
     }
-    localStorage.removeItem('chatUser');
-    setUser(null);
   };
 
   // Send message handler
   const sendMessage = () => {
-    if ((!messageInput.trim() && !image) || !socket) return;
+    if ((!messageInput.trim() && !image) || !user) return;
 
     const messageData = {
       text: messageInput.trim(),
-      image: image
+      image: image,
+      sender: user,
+      timestamp: Date.now(),
+      read: false
     };
 
     if (replyTo) {
-      socket.emit('replyToMessage', {
-        message: messageData,
-        replyToId: replyTo.id
-      });
+      messageData.replyTo = replyTo.id;
       setReplyTo(null);
-    } else {
-      socket.emit('sendMessage', messageData);
     }
+
+    const newMessageRef = push(messagesRef);
+    set(newMessageRef, messageData);
 
     setMessageInput('');
     setImage(null);
     setIsTyping(false);
-    socket.emit('typing', false);
+    
+    // Stop typing indicator
+    const typingUserRef = ref(database, `typing/${user}`);
+    set(typingUserRef, false);
+    
     clearTimeout(typingTimeout.current);
   };
 
@@ -545,22 +624,19 @@ export default function App() {
   const handleTyping = (e) => {
     setMessageInput(e.target.value);
     
-    if (!isTyping && e.target.value.trim()) {
-      setIsTyping(true);
-      socket.emit('typing', true);
+    const typingUserRef = ref(database, `typing/${user}`);
+    
+    if (e.target.value.trim()) {
+      set(typingUserRef, true);
+    } else {
+      set(typingUserRef, false);
     }
     
     clearTimeout(typingTimeout.current);
     
-    if (e.target.value.trim() === '') {
-      setIsTyping(false);
-      socket.emit('typing', false);
-    } else {
-      typingTimeout.current = setTimeout(() => {
-        setIsTyping(false);
-        socket.emit('typing', false);
-      }, 2000);
-    }
+    typingTimeout.current = setTimeout(() => {
+      set(typingUserRef, false);
+    }, 2000);
   };
 
   // Handle key press
@@ -593,7 +669,7 @@ export default function App() {
   // Delete all messages
   const handleDeleteChat = () => {
     if (window.confirm('Are you sure you want to delete the entire chat? This cannot be undone.')) {
-      socket.emit('deleteChat');
+      remove(messagesRef);
     }
   };
 
@@ -616,8 +692,8 @@ export default function App() {
         <GlobalStyle />
         <LoginContainer>
           <LoginTitle>Choose Your User</LoginTitle>
-          <UserButton userColor="userR" onClick={() => handleLogin('R')}>User R</UserButton>
-          <UserButton userColor="userB" onClick={() => handleLogin('B')}>User B</UserButton>
+          <UserButton $userColor="R" onClick={() => handleLogin('R')}>User R</UserButton>
+          <UserButton $userColor="B" onClick={() => handleLogin('B')}>User B</UserButton>
         </LoginContainer>
       </ThemeProvider>
     );
@@ -642,8 +718,8 @@ export default function App() {
             {user === 'R' ? 'Chat with User B' : 'Chat with User R'}
           </HeaderTitle>
           <HeaderStatus>
-            <StatusDot online={user === 'R' ? userStatus.B?.online : userStatus.R?.online} />
-            <span>{user === 'R' ? (userStatus.B?.online ? 'Online' : 'Offline') : (userStatus.R?.online ? 'Online' : 'Offline')}</span>
+            <StatusDot $online={user === 'R' ? userStatus.B : userStatus.R} />
+            <span>{user === 'R' ? (userStatus.B ? 'Online' : 'Offline') : (userStatus.R ? 'Online' : 'Offline')}</span>
           </HeaderStatus>
           <ActionButtons>
             <IconButton onClick={handleDeleteChat} title="Delete Chat">
@@ -666,10 +742,10 @@ export default function App() {
                 const replyMessage = message.replyTo && messages.find(m => m.id === message.replyTo);
                 
                 return (
-                  <MessageGroup key={message.id} sent={isSent}>
+                  <MessageGroup key={message.id} $sent={isSent}>
                     <MessageBubble 
-                      sent={isSent} 
-                      userColor={message.sender === 'R' ? 'userR' : 'userB'}
+                      $sent={isSent} 
+                      $userColor={message.sender}
                       onDoubleClick={() => handleReply(message)}
                     >
                       {replyMessage && (
