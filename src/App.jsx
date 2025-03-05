@@ -21,8 +21,7 @@ import { RiFileGifLine } from 'react-icons/ri';
 import Emoji from 'react-emoji-render';
 import TextareaAutosize from 'react-textarea-autosize';
 import EmojiPicker from 'emoji-picker-react';
-import { GiphyFetch } from '@giphy/js-fetch-api';
-import { Carousel } from '@giphy/react-components';
+// GIF imports removed
 
 // Firebase config
 const firebaseConfig = {
@@ -310,17 +309,18 @@ const ReadReceipt = styled.div`
 `;
 
 const TypingIndicator = styled.div`
-  padding: 8px 12px;
-  border-radius: 18px;
+  padding: 5px 8px;
+  border-radius: 12px;
   background-color: ${props => props.theme.secondary};
   color: ${props => props.theme.textSecondary};
   align-self: flex-start;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
   font-style: italic;
   position: sticky;
   bottom: 0;
   z-index: 10;
   width: fit-content;
+  font-size: 0.7rem;
 `;
 
 const InputArea = styled.div`
@@ -593,8 +593,7 @@ export default function App() {
   const [messageInput, setMessageInput] = useState('');
   const [userStatus, setUserStatus] = useState({ R: false, B: false });
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showGifPicker, setShowGifPicker] = useState(false);
-  const [gifSearchQuery, setGifSearchQuery] = useState('');
+  // GIF state variables removed
   const [replyTo, setReplyTo] = useState(null);
   const [userTyping, setUserTyping] = useState(null);
   const [image, setImage] = useState(null);
@@ -776,34 +775,7 @@ export default function App() {
     }
   };
   
-  // Send GIF message handler
-  const sendGif = (gif) => {
-    if (!user) return;
-    
-    const gifUrl = gif.images.original.url;
-    
-    const messageData = {
-      text: '',
-      image: gifUrl,
-      sender: user,
-      timestamp: Date.now(),
-      read: false,
-      isGif: true
-    };
-    
-    if (replyTo) {
-      messageData.replyTo = replyTo.id;
-      setReplyTo(null);
-    }
-    
-    const newMessageRef = push(messagesRef);
-    set(newMessageRef, messageData);
-    
-    // Focus the input again on mobile to prevent keyboard retraction
-    if (window.innerWidth <= 768 && inputRef.current) {
-      inputRef.current.focus();
-    }
-  };
+  // GIF sending function removed
 
   // Typing indicator handler
   const handleTyping = (e) => {
@@ -901,14 +873,13 @@ export default function App() {
     }
   }, [userTyping]);
 
-  // GIPHY API setup
-const giphyFetch = new GiphyFetch('ysF7szZaXxSrJyQYsesL9EjFZwSHtv8j'); // Using a public API key
+  // GIPHY API setup removed
 
 // Emoji picker component styling
 const EmojiPickerWrapper = styled.div`
   position: absolute;
   bottom: 80px;
-  right: 15px;
+  left: 15px;
   z-index: 100;
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0,0,0,0.3);
@@ -931,36 +902,7 @@ const EmojiPickerWrapper = styled.div`
   }
 `;
 
-const GiphyPickerContainer = styled.div`
-  position: absolute;
-  bottom: 80px;
-  right: 15px;
-  left: 15px;
-  z-index: 100;
-  background-color: ${props => props.theme.primary};
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.3);
-  padding: 10px;
-  max-height: 350px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  
-  @media (max-width: 480px) {
-    bottom: 70px;
-  }
-`;
-
-const GiphySearchInput = styled.input`
-  background-color: ${props => props.theme.secondary};
-  color: ${props => props.theme.text};
-  border: none;
-  padding: 10px;
-  border-radius: 5px;
-  margin-bottom: 10px;
-  width: 100%;
-  outline: none;
-`;
+// GIF sharing removed
 
   const [activeEmojiCategory, setActiveEmojiCategory] = useState('Smileys');
 
@@ -1112,19 +1054,9 @@ const GiphySearchInput = styled.input`
             <IconActionButton 
               onClick={() => {
                 setShowEmojiPicker(!showEmojiPicker);
-                if (showGifPicker) setShowGifPicker(false);
               }}
             >
               <BsEmojiSmile />
-            </IconActionButton>
-            
-            <IconActionButton 
-              onClick={() => {
-                setShowGifPicker(!showGifPicker);
-                if (showEmojiPicker) setShowEmojiPicker(false);
-              }}
-            >
-              <RiFileGifLine />
             </IconActionButton>
             
             <TextInput
@@ -1132,6 +1064,9 @@ const GiphySearchInput = styled.input`
               value={messageInput}
               onChange={handleTyping}
               onKeyDown={handleKeyPress}
+              onClick={() => {
+                if (showEmojiPicker) setShowEmojiPicker(false);
+              }}
               placeholder="Type a message..."
               minRows={1}
               maxRows={5}
@@ -1156,32 +1091,7 @@ const GiphySearchInput = styled.input`
             </EmojiPickerWrapper>
           )}
           
-          {showGifPicker && (
-            <GiphyPickerContainer>
-              <GiphySearchInput
-                type="text"
-                value={gifSearchQuery}
-                onChange={(e) => setGifSearchQuery(e.target.value)}
-                placeholder="Search for GIFs..."
-              />
-              <div style={{ overflow: 'auto', flex: 1 }}>
-                <Carousel
-                  fetchGifs={(offset) => 
-                    gifSearchQuery 
-                      ? giphyFetch.search(gifSearchQuery, { offset, limit: 10 })
-                      : giphyFetch.trending({ offset, limit: 10 })
-                  }
-                  onGifClick={(gif) => {
-                    sendGif(gif);
-                    setShowGifPicker(false);
-                  }}
-                  width={window.innerWidth > 480 ? window.innerWidth * 0.4 : window.innerWidth - 50}
-                  columns={window.innerWidth > 480 ? 3 : 2}
-                  gutter={6}
-                />
-              </div>
-            </GiphyPickerContainer>
-          )}
+          {/* GIF picker removed */}
         </InputArea>
         
         {fullscreenImage && (
