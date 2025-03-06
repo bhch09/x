@@ -154,7 +154,7 @@ const HomePage = ({ onStartChat }) => {
                 <TopicItem>Alcohols, Carboxylic Acids, and Ethers</TopicItem>
               </TopicList>
             </ImportantPoints>
-            <DownloadBtn>Download Notes</DownloadBtn>
+            <ChatButton class="xx" onClick={handleStartChat}>Download Notes</ChatButton>
           </ChapterCard>
 
           {/* Chapter 5 */}
@@ -171,11 +171,6 @@ const HomePage = ({ onStartChat }) => {
             </ImportantPoints>
             <DownloadBtn>Download Notes</DownloadBtn>
           </ChapterCard>
-
-          <ChatButton id="xx" onClick={handleStartChat}>
-            Go to Chat
-            {hasNewMessage && <ButtonNotificationDot />}
-          </ChatButton>
         </ChapterList>
       </Container>
     </div>
