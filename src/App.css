@@ -1,20 +1,15 @@
 
-/* Global styles for fullscreen layout */
-html, body, #root {
-  height: 100%;
-  width: 100%;
+body {
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f8f9fa;
+  line-height: 1.6;
 }
 
-/* Fix for mobile double-click */
-* {
-  touch-action: manipulation;
-}
-
-/* Make all elements responsive */
-img, video, canvas, svg {
-  max-width: 100%;
-  height: auto;
+/* Light theme overrides for the homepage */
+.homepage-theme {
+  background-color: #f8f9fa;
+  color: #333;
 }

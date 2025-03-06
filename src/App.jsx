@@ -15,13 +15,13 @@ import {
   onDisconnect as fbOnDisconnect
 } from 'firebase/database';
 import styled, { createGlobalStyle, ThemeProvider } from 'styled-components';
-import { FiSend, FiLogOut, FiTrash2, FiImage, FiCheck } from 'react-icons/fi';
+import { FiSend, FiLogOut, FiTrash2, FiImage, FiCheck, FiArrowLeft } from 'react-icons/fi';
 import { BsEmojiSmile, BsReply } from 'react-icons/bs';
 import { RiFileGifLine } from 'react-icons/ri';
 import Emoji from 'react-emoji-render';
 import TextareaAutosize from 'react-textarea-autosize';
 import EmojiPicker from 'emoji-picker-react';
-// GIF imports removed
+import HomePage from './HomePage';
 
 // Firebase config
 const firebaseConfig = {
@@ -165,17 +165,10 @@ const HeaderTitle = styled.h1`
   }
 `;
 
-const HeaderStatus = styled.div`
+const HeaderActions = styled.div`
   display: flex;
   align-items: center;
-`;
-
-const StatusDot = styled.div`
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: ${props => props.$online ? '#4CAF50' : '#9e9e9e'};
-  margin-right: 5px;
+  gap: 15px;
 `;
 
 const ActionButtons = styled.div`
@@ -412,79 +405,6 @@ const EmojiPickerContainer = styled.div`
   }
 `;
 
-const EmojiCategoryTabs = styled.div`
-  display: flex;
-  overflow-x: auto;
-  margin-bottom: 8px;
-  padding-bottom: 5px;
-  
-  &::-webkit-scrollbar {
-    height: 3px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: ${props => props.theme.secondary};
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: ${props => props.theme.accent};
-    border-radius: 3px;
-  }
-`;
-
-const EmojiCategoryTab = styled.button`
-  background: ${props => props.$active ? props.theme.secondary : 'none'};
-  border: none;
-  padding: 5px 10px;
-  white-space: nowrap;
-  border-radius: 4px;
-  margin-right: 5px;
-  color: ${props => props.theme.text};
-  font-size: 0.9rem;
-  cursor: pointer;
-`;
-
-const EmojiGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 8px;
-  overflow-y: auto;
-  padding: 5px;
-  height: 200px;
-  
-  &::-webkit-scrollbar {
-    width: 5px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: ${props => props.theme.secondary};
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: ${props => props.theme.accent};
-    border-radius: 3px;
-  }
-  
-  @media (max-width: 480px) {
-    grid-template-columns: repeat(6, 1fr);
-    height: 180px;
-  }
-`;
-
-const EmojiButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 5px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-  
-  &:hover {
-    background-color: ${props => props.theme.secondary};
-  }
-`;
-
 const ReplyPreview = styled.div`
   background-color: ${props => props.theme.secondary};
   padding: 10px 15px;
@@ -593,12 +513,12 @@ export default function App() {
   const [messageInput, setMessageInput] = useState('');
   const [userStatus, setUserStatus] = useState({ R: false, B: false });
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  // GIF state variables removed
   const [replyTo, setReplyTo] = useState(null);
   const [userTyping, setUserTyping] = useState(null);
   const [image, setImage] = useState(null);
   const [fullscreenImage, setFullscreenImage] = useState(null);
   const [windowFocus, setWindowFocus] = useState(true);
+  const [showHomePage, setShowHomePage] = useState(true);
   
   const messageListRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -703,10 +623,13 @@ export default function App() {
       });
       
       setMessages(messagesData);
-      setTimeout(scrollToBottom, 100);
       
-      // Only mark messages as read if window is focused
-      if (user && windowFocus) {
+      if (!showHomePage) {
+        setTimeout(scrollToBottom, 100);
+      }
+      
+      // Only mark messages as read if on chat screen and window is focused
+      if (user && windowFocus && !showHomePage) {
         messagesData.forEach(message => {
           if (message.sender !== user && !message.read) {
             const messageRef = ref(database, `messages/${message.id}`);
@@ -717,7 +640,7 @@ export default function App() {
     });
 
     return () => unsubscribe();
-  }, [user, windowFocus]);
+  }, [user, windowFocus, showHomePage]);
 
   // Login handler
   const handleLogin = (selectedUser) => {
@@ -774,8 +697,6 @@ export default function App() {
       inputRef.current.focus();
     }
   };
-  
-  // GIF sending function removed
 
   // Typing indicator handler
   const handleTyping = (e) => {
@@ -842,6 +763,30 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
+  // Navigate to home page
+  const goToHomePage = () => {
+    setShowHomePage(true);
+  };
+
+  // Navigate to chat
+  const goToChat = () => {
+    setShowHomePage(false);
+    
+    // Mark all messages as read
+    if (user) {
+      messages.forEach(message => {
+        if (message.sender !== user && !message.read) {
+          const messageRef = ref(database, `messages/${message.id}`);
+          update(messageRef, { read: true });
+        }
+      });
+    }
+    
+    // Update last read timestamp in localStorage
+    const latestTimestamp = Math.max(...messages.map(msg => msg.timestamp || 0), 0);
+    localStorage.setItem('lastReadMessage', latestTimestamp);
+  };
+
   // Render login screen
   if (!user) {
     return (
@@ -852,6 +797,16 @@ export default function App() {
           <UserButton $userColor="R" onClick={() => handleLogin('R')}>User R</UserButton>
           <UserButton $userColor="B" onClick={() => handleLogin('B')}>User B</UserButton>
         </LoginContainer>
+      </ThemeProvider>
+    );
+  }
+
+  // Render home page
+  if (showHomePage) {
+    return (
+      <ThemeProvider theme={theme}>
+        <GlobalStyle />
+        <HomePage onStartChat={goToChat} />
       </ThemeProvider>
     );
   }
@@ -873,60 +828,46 @@ export default function App() {
     }
   }, [userTyping]);
 
-  // GIPHY API setup removed
-
-// Emoji picker component styling
-const EmojiPickerWrapper = styled.div`
-  position: absolute;
-  bottom: 80px;
-  left: 15px;
-  z-index: 100;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.3);
-
-  @media (max-width: 480px) {
-    bottom: 70px;
+  // Emoji picker component styling
+  const EmojiPickerWrapper = styled.div`
+    position: absolute;
+    bottom: 80px;
     left: 15px;
-    right: 15px;
-    width: auto;
-  }
+    z-index: 100;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
 
-  & .EmojiPickerReact {
-    --epr-bg-color: ${props => props.theme.primary};
-    --epr-category-label-bg-color: ${props => props.theme.secondary};
-    --epr-text-color: ${props => props.theme.text};
-    --epr-search-input-bg-color: ${props => props.theme.secondary};
-    --epr-hover-bg-color: ${props => props.theme.secondary};
-    height: 350px !important;
-    width: 100% !important;
-  }
-`;
+    @media (max-width: 480px) {
+      bottom: 70px;
+      left: 15px;
+      right: 15px;
+      width: auto;
+    }
 
-// GIF sharing removed
-
-  const [activeEmojiCategory, setActiveEmojiCategory] = useState('Smileys');
+    & .EmojiPickerReact {
+      --epr-bg-color: ${props => props.theme.primary};
+      --epr-category-label-bg-color: ${props => props.theme.secondary};
+      --epr-text-color: ${props => props.theme.text};
+      --epr-search-input-bg-color: ${props => props.theme.secondary};
+      --epr-hover-bg-color: ${props => props.theme.secondary};
+      height: 350px !important;
+      width: 100% !important;
+    }
+  `;
 
   return (
     <ThemeProvider theme={theme}>
       <GlobalStyle />
       <Container>
         <Header>
-          <HeaderTitle>
-            {user === 'R' ? 'Chat with User B' : 'Chat with User R'}
-          </HeaderTitle>
-          <HeaderStatus>
-            <StatusDot $online={user === 'R' ? userStatus.B : userStatus.R} />
-            <span>
-              {user === 'R' 
-                ? (userStatus.B 
-                  ? 'Online' 
-                  : 'Offline')
-                : (userStatus.R 
-                  ? 'Online' 
-                  : 'Offline')
-              }
-            </span>
-          </HeaderStatus>
+          <HeaderActions>
+            <IconButton onClick={goToHomePage} title="Back to Home">
+              <FiArrowLeft />
+            </IconButton>
+            <HeaderTitle>
+              {user === 'R' ? 'Chat with User B' : 'Chat with User R'}
+            </HeaderTitle>
+          </HeaderActions>
           <ActionButtons>
             <IconButton onClick={handleDeleteChat} title="Delete Chat">
               <FiTrash2 />
@@ -946,7 +887,6 @@ const EmojiPickerWrapper = styled.div`
               {dateMessages.map((message) => {
                 const isSent = message.sender === user;
                 const replyMessage = message.replyTo && messages.find(m => m.id === message.replyTo);
-                const otherUser = user === 'R' ? 'B' : 'R';
                 
                 return (
                   <MessageGroup key={message.id} $sent={isSent}>
@@ -967,23 +907,9 @@ const EmojiPickerWrapper = styled.div`
                         <>
                           <MessageImage 
                             src={message.image} 
-                            alt={message.isGif ? "GIF" : "Shared media"} 
+                            alt="Shared media" 
                             onClick={() => setFullscreenImage(message.image)}
                           />
-                          {message.isGif && (
-                            <span style={{ 
-                              fontSize: '0.7rem', 
-                              backgroundColor: 'rgba(0,0,0,0.5)',
-                              color: 'white',
-                              padding: '2px 5px',
-                              borderRadius: '3px',
-                              position: 'absolute',
-                              bottom: '5px',
-                              left: '5px'
-                            }}>
-                              GIF
-                            </span>
-                          )}
                         </>
                       )}
                       
@@ -1090,8 +1016,6 @@ const EmojiPickerWrapper = styled.div`
               />
             </EmojiPickerWrapper>
           )}
-          
-          {/* GIF picker removed */}
         </InputArea>
         
         {fullscreenImage && (
