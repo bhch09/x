@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { initializeApp } from 'firebase/app';
@@ -24,10 +23,10 @@ const HomePage = ({ onStartChat }) => {
   const [user, setUser] = useState(localStorage.getItem('chatUser') || null);
   const [messages, setMessages] = useState([]);
   const [lastReadMessage, setLastReadMessage] = useState(parseInt(localStorage.getItem('lastReadMessage') || '0', 10));
-  
+
   // Create audio object outside component to ensure it's ready
   const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3');
-  
+
   // Play notification sound when a new message is received
   useEffect(() => {
     if (hasNewMessage) {
@@ -38,30 +37,30 @@ const HomePage = ({ onStartChat }) => {
   // Listen for messages
   useEffect(() => {
     const messagesRef = ref(database, 'messages');
-    
+
     const unsubscribe = onValue(messagesRef, (snapshot) => {
       const messagesData = [];
       let hasUnread = false;
       let latestMessageTimestamp = 0;
-      
+
       snapshot.forEach((childSnapshot) => {
         const message = {
           id: childSnapshot.key,
           ...childSnapshot.val()
         };
         messagesData.push(message);
-        
+
         // Keep track of the latest message timestamp
         if (message.timestamp > latestMessageTimestamp) {
           latestMessageTimestamp = message.timestamp;
         }
-        
+
         // Check if this is a new message from the other user
         if (user && message.sender !== user && message.timestamp > lastReadMessage) {
           hasUnread = true;
         }
       });
-      
+
       // Play sound if there's a new unread message but ONLY:
       // 1. When we have unread messages that we didn't know about before (!hasNewMessage)
       // 2. When we're on the homepage (to prevent sounds in the chat interface)
@@ -69,10 +68,10 @@ const HomePage = ({ onStartChat }) => {
       if (hasUnread && !hasNewMessage && latestMessageTimestamp > lastReadMessage) {
         notificationSound.play().catch(e => console.log("Audio play error:", e));
       }
-      
+
       setMessages(messagesData);
       setHasNewMessage(hasUnread);
-      
+
       // Update document title if there's a new message
       if (hasUnread) {
         document.title = "New Message! - CBSE Science Notes";
@@ -91,13 +90,13 @@ const HomePage = ({ onStartChat }) => {
       const latestTimestamp = Math.max(...messages.map(msg => msg.timestamp || 0));
       localStorage.setItem('lastReadMessage', latestTimestamp);
     }
-    
+
     // Check if user is logged in
     if (!user) {
       // If no user is logged in, we'll proceed to chat which will show login screen
       console.log("No user logged in, will be redirected to login");
     }
-    
+
     onStartChat();
   };
 
@@ -123,7 +122,7 @@ const HomePage = ({ onStartChat }) => {
                 <TopicItem>Balancing Chemical Equations</TopicItem>
               </TopicList>
             </ImportantPoints>
-            <DownloadBtn>Download Notes</DownloadBtn>
+            <DownloadBtn onClick={handleStartChat}>Download Notes</DownloadBtn>
           </ChapterCard>
 
           {/* Chapter 2 */}
@@ -138,7 +137,7 @@ const HomePage = ({ onStartChat }) => {
                 <TopicItem>Types of Salts and their Uses</TopicItem>
               </TopicList>
             </ImportantPoints>
-            <DownloadBtn>Download Notes</DownloadBtn>
+            <DownloadBtn onClick={handleStartChat}>Download Notes</DownloadBtn>
           </ChapterCard>
 
           {/* Chapter 3 */}
@@ -153,7 +152,7 @@ const HomePage = ({ onStartChat }) => {
                 <TopicItem>Extraction of Metals</TopicItem>
               </TopicList>
             </ImportantPoints>
-            <DownloadBtn>Download Notes</DownloadBtn>
+            <DownloadBtn onClick={handleStartChat}>Download Notes</DownloadBtn>
           </ChapterCard>
 
           {/* Chapter 4 */}
@@ -185,7 +184,7 @@ const HomePage = ({ onStartChat }) => {
                 <TopicItem>Excretion in Plants and Animals</TopicItem>
               </TopicList>
             </ImportantPoints>
-            <DownloadBtn>Download Notes</DownloadBtn>
+            <DownloadBtn onClick={handleStartChat}>Download Notes</DownloadBtn>
           </ChapterCard>
         </ChapterList>
       </Container>
@@ -212,7 +211,7 @@ const NotificationDot = styled.div`
   border-radius: 50%;
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
   animation: pulse 1.5s infinite;
-  
+
   @keyframes pulse {
     0% {
       transform: scale(1);
@@ -237,16 +236,16 @@ const Container = styled.div`
   height: calc(100vh - 130px); /* Adjust height based on header */
   -webkit-overflow-scrolling: touch; /* Smoother scrolling on iOS */
   scrollbar-width: thin;
-  
+
   &::-webkit-scrollbar {
     width: 8px;
   }
-  
+
   &::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.1);
     border-radius: 10px;
   }
-  
+
   &::-webkit-scrollbar-thumb {
     background: #004685;
     border-radius: 10px;
@@ -314,7 +313,7 @@ const ChatButton = styled.button`
   position: relative;
   font-weight: bold;
   transition: background-color 0.3s;
-  
+
   &:hover {
     background-color: #003366;
   }
