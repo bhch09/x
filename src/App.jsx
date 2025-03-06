@@ -518,7 +518,9 @@ export default function App() {
   const [image, setImage] = useState(null);
   const [fullscreenImage, setFullscreenImage] = useState(null);
   const [windowFocus, setWindowFocus] = useState(true);
-  const [showHomePage, setShowHomePage] = useState(true);
+  const [showHomePage, setShowHomePage] = useState(
+    localStorage.getItem('showChatInterface') !== 'true'
+  );
   
   const messageListRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -613,19 +615,23 @@ export default function App() {
     const messagesQuery = query(messagesRef, orderByChild('timestamp'));
     
     const unsubscribe = onValue(messagesQuery, (snapshot) => {
-      const messagesData = [];
-      snapshot.forEach((childSnapshot) => {
-        const message = {
-          id: childSnapshot.key,
-          ...childSnapshot.val()
-        };
-        messagesData.push(message);
-      });
-      
-      setMessages(messagesData);
-      
-      if (!showHomePage) {
-        setTimeout(scrollToBottom, 100);
+      try {
+        const messagesData = [];
+        snapshot.forEach((childSnapshot) => {
+          const message = {
+            id: childSnapshot.key,
+            ...childSnapshot.val()
+          };
+          messagesData.push(message);
+        });
+        
+        setMessages(messagesData);
+        
+        if (!showHomePage) {
+          setTimeout(scrollToBottom, 100);
+        }
+      } catch (error) {
+        console.error("Error processing messages:", error);
       }
       
       // Only mark messages as read if on chat screen and window is focused
@@ -650,6 +656,9 @@ export default function App() {
     // Update user status when logged in
     const userStatusRef = ref(database, `status/${selectedUser}`);
     set(userStatusRef, true);
+    
+    // Ensure we stay on chat interface after login
+    setShowHomePage(false);
   };
 
   // Logout handler
@@ -766,11 +775,15 @@ export default function App() {
   // Navigate to home page
   const goToHomePage = () => {
     setShowHomePage(true);
+    localStorage.removeItem('showChatInterface');
   };
 
   // Navigate to chat
   const goToChat = () => {
     setShowHomePage(false);
+    // Store that user is in chat interface so if page refreshes, 
+    // they stay in chat interface
+    localStorage.setItem('showChatInterface', 'true');
     
     // Mark all messages as read
     if (user) {
