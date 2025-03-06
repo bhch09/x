@@ -630,18 +630,18 @@ export default function App() {
         if (!showHomePage) {
           setTimeout(scrollToBottom, 100);
         }
+        
+        // Only mark messages as read if on chat screen and window is focused
+        if (user && windowFocus && !showHomePage) {
+          messagesData.forEach(message => {
+            if (message.sender !== user && !message.read) {
+              const messageRef = ref(database, `messages/${message.id}`);
+              update(messageRef, { read: true });
+            }
+          });
+        }
       } catch (error) {
         console.error("Error processing messages:", error);
-      }
-      
-      // Only mark messages as read if on chat screen and window is focused
-      if (user && windowFocus && !showHomePage) {
-        messagesData.forEach(message => {
-          if (message.sender !== user && !message.read) {
-            const messageRef = ref(database, `messages/${message.id}`);
-            update(messageRef, { read: true });
-          }
-        });
       }
     });
 
@@ -659,6 +659,7 @@ export default function App() {
     
     // Ensure we stay on chat interface after login
     setShowHomePage(false);
+    localStorage.setItem('showChatInterface', 'true');
   };
 
   // Logout handler

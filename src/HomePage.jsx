@@ -23,10 +23,12 @@ const HomePage = ({ onStartChat }) => {
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const [user, setUser] = useState(localStorage.getItem('chatUser') || null);
   const [messages, setMessages] = useState([]);
-  const [lastReadMessage, setLastReadMessage] = useState(localStorage.getItem('lastReadMessage') || 0);
+  const [lastReadMessage, setLastReadMessage] = useState(parseInt(localStorage.getItem('lastReadMessage') || '0', 10));
+  
+  // Create audio object outside component to ensure it's ready
   const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3');
   
-  // Play notification sound when component mounts if there are unread messages
+  // Play notification sound when a new message is received
   useEffect(() => {
     if (hasNewMessage) {
       notificationSound.play().catch(e => console.log("Audio play error:", e));
@@ -51,10 +53,13 @@ const HomePage = ({ onStartChat }) => {
         // Check if this is a new message from the other user
         if (user && message.sender !== user && message.timestamp > lastReadMessage) {
           hasUnread = true;
-          // Play notification sound when a new message is received
-          notificationSound.play().catch(e => console.log("Audio play error:", e));
         }
       });
+      
+      // Play sound if there's a new unread message (only when status changes from no unread to having unread)
+      if (hasUnread && !hasNewMessage) {
+        notificationSound.play().catch(e => console.log("Audio play error:", e));
+      }
       
       setMessages(messagesData);
       setHasNewMessage(hasUnread);
@@ -188,13 +193,29 @@ const Header = styled.div`
 
 const NotificationDot = styled.div`
   position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 12px;
-  height: 12px;
+  top: 15px;
+  right: 15px;
+  width: 14px;
+  height: 14px;
   background-color: #4CAF50;
   border-radius: 50%;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+  animation: pulse 1.5s infinite;
+  
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
 `;
 
 const Container = styled.div`
