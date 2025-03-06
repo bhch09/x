@@ -7,7 +7,8 @@ body {
   background-color: #f8f9fa;
   line-height: 1.6;
   overflow-y: auto;
-  height: 100%;
+  height: 100vh;
+  position: relative;
 }
 
 html {
@@ -16,7 +17,10 @@ html {
 }
 
 #root {
-  min-height: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 /* Light theme overrides for the homepage */

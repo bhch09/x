@@ -787,7 +787,17 @@ export default function App() {
     localStorage.setItem('lastReadMessage', latestTimestamp);
   };
 
-  // Render login screen
+  // Render home page first
+  if (showHomePage) {
+    return (
+      <ThemeProvider theme={theme}>
+        <GlobalStyle />
+        <HomePage onStartChat={goToChat} />
+      </ThemeProvider>
+    );
+  }
+
+  // Render login screen if not authenticated and trying to access chat
   if (!user) {
     return (
       <ThemeProvider theme={theme}>
@@ -797,16 +807,6 @@ export default function App() {
           <UserButton $userColor="R" onClick={() => handleLogin('R')}>User R</UserButton>
           <UserButton $userColor="B" onClick={() => handleLogin('B')}>User B</UserButton>
         </LoginContainer>
-      </ThemeProvider>
-    );
-  }
-
-  // Render home page
-  if (showHomePage) {
-    return (
-      <ThemeProvider theme={theme}>
-        <GlobalStyle />
-        <HomePage onStartChat={goToChat} />
       </ThemeProvider>
     );
   }

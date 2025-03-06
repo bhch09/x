@@ -77,6 +77,13 @@ const HomePage = ({ onStartChat }) => {
       const latestTimestamp = Math.max(...messages.map(msg => msg.timestamp || 0));
       localStorage.setItem('lastReadMessage', latestTimestamp);
     }
+    
+    // Check if user is logged in
+    if (!user) {
+      // If no user is logged in, we'll proceed to chat which will show login screen
+      console.log("No user logged in, will be redirected to login");
+    }
+    
     onStartChat();
   };
 
@@ -200,6 +207,7 @@ const Container = styled.div`
   margin: 0 auto;
   padding: 20px;
   overflow-y: auto;
+  height: calc(100vh - 130px); /* Adjust height based on header */
 `;
 
 const ChapterList = styled.div`
@@ -208,6 +216,8 @@ const ChapterList = styled.div`
   flex-direction: column;
   align-items: center;
   width: 100%;
+  overflow-y: auto;
+  padding-bottom: 20px;
 `;
 
 const ChapterCard = styled.div`
