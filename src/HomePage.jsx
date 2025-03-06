@@ -170,7 +170,6 @@ const HomePage = ({ onStartChat }) => {
             </ImportantPoints>
             <ChatButton className="xx" onClick={handleStartChat}>
               Download Notes
-              {hasNewMessage && <ButtonNotificationDot />}
             </ChatButton>
           </ChapterCard>
 
@@ -236,6 +235,22 @@ const Container = styled.div`
   padding: 20px;
   overflow-y: auto;
   height: calc(100vh - 130px); /* Adjust height based on header */
+  -webkit-overflow-scrolling: touch; /* Smoother scrolling on iOS */
+  scrollbar-width: thin;
+  
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #004685;
+    border-radius: 10px;
+  }
 `;
 
 const ChapterList = styled.div`

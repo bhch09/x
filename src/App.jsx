@@ -221,6 +221,18 @@ const MessageGroup = styled.div`
   flex-direction: column;
   align-items: ${props => props.$sent ? 'flex-end' : 'flex-start'};
   margin-bottom: 15px;
+  animation: fadeIn 0.3s ease-in-out;
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 `;
 
 const MessageBubble = styled.div`
@@ -236,9 +248,14 @@ const MessageBubble = styled.div`
   color: ${props => props.theme.text};
   word-break: break-word;
   position: relative;
+  transition: transform 0.2s ease;
   
-  &:hover .message-actions {
-    opacity: 1;
+  &:hover {
+    transform: scale(1.02);
+    
+    .message-actions {
+      opacity: 1;
+    }
   }
   
   @media (max-width: 480px) {
@@ -330,6 +347,18 @@ const InputContainer = styled.div`
   background-color: ${props => props.theme.secondary};
   border-radius: 24px;
   padding: 8px 15px;
+  animation: slideUp 0.3s ease-in-out;
+  
+  @keyframes slideUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
 `;
 
 const TextInput = styled(TextareaAutosize)`
@@ -573,8 +602,12 @@ export default function App() {
         set(userStatusRef, false);
         set(userPresenceRef, false);
       };
+    } else if (!showHomePage) {
+      // If no user and not on homepage, go to homepage
+      setShowHomePage(true);
+      localStorage.removeItem('showChatInterface');
     }
-  }, [user]);
+  }, [user, showHomePage]);
 
   // Listen for status changes
   useEffect(() => {
@@ -778,6 +811,21 @@ export default function App() {
     setShowHomePage(true);
     localStorage.removeItem('showChatInterface');
   };
+  
+  // Handle browser back button
+  useEffect(() => {
+    const handleBackButton = () => {
+      if (!showHomePage) {
+        goToHomePage();
+      }
+    };
+    
+    window.addEventListener('popstate', handleBackButton);
+    
+    return () => {
+      window.removeEventListener('popstate', handleBackButton);
+    };
+  }, [showHomePage]);
 
   // Navigate to chat
   const goToChat = () => {
