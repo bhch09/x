@@ -42,6 +42,7 @@ const HomePage = ({ onStartChat }) => {
     const unsubscribe = onValue(messagesRef, (snapshot) => {
       const messagesData = [];
       let hasUnread = false;
+      let latestMessageTimestamp = 0;
       
       snapshot.forEach((childSnapshot) => {
         const message = {
@@ -50,14 +51,22 @@ const HomePage = ({ onStartChat }) => {
         };
         messagesData.push(message);
         
+        // Keep track of the latest message timestamp
+        if (message.timestamp > latestMessageTimestamp) {
+          latestMessageTimestamp = message.timestamp;
+        }
+        
         // Check if this is a new message from the other user
         if (user && message.sender !== user && message.timestamp > lastReadMessage) {
           hasUnread = true;
         }
       });
       
-      // Play sound if there's a new unread message (only when status changes from no unread to having unread)
-      if (hasUnread && !hasNewMessage) {
+      // Play sound if there's a new unread message but ONLY:
+      // 1. When we have unread messages that we didn't know about before (!hasNewMessage)
+      // 2. When we're on the homepage (to prevent sounds in the chat interface)
+      // 3. When the latest message is newer than our last check (to avoid playing on initial load)
+      if (hasUnread && !hasNewMessage && latestMessageTimestamp > lastReadMessage) {
         notificationSound.play().catch(e => console.log("Audio play error:", e));
       }
       
@@ -73,7 +82,7 @@ const HomePage = ({ onStartChat }) => {
     });
 
     return () => unsubscribe();
-  }, [user, lastReadMessage]);
+  }, [user, lastReadMessage, hasNewMessage]);
 
   // Handle starting chat and updating the last read message timestamp
   const handleStartChat = () => {
@@ -159,7 +168,10 @@ const HomePage = ({ onStartChat }) => {
                 <TopicItem>Alcohols, Carboxylic Acids, and Ethers</TopicItem>
               </TopicList>
             </ImportantPoints>
-            <ChatButton className="xx" onClick={handleStartChat}>Download Notes</ChatButton>
+            <ChatButton className="xx" onClick={handleStartChat}>
+              Download Notes
+              {hasNewMessage && <ButtonNotificationDot />}
+            </ChatButton>
           </ChapterCard>
 
           {/* Chapter 5 */}
