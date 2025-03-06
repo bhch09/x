@@ -25,6 +25,13 @@ const HomePage = ({ onStartChat }) => {
   const [messages, setMessages] = useState([]);
   const [lastReadMessage, setLastReadMessage] = useState(localStorage.getItem('lastReadMessage') || 0);
   const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3');
+  
+  // Play notification sound when component mounts if there are unread messages
+  useEffect(() => {
+    if (hasNewMessage) {
+      notificationSound.play().catch(e => console.log("Audio play error:", e));
+    }
+  }, [hasNewMessage]);
 
   // Listen for messages
   useEffect(() => {
@@ -128,6 +135,36 @@ const HomePage = ({ onStartChat }) => {
             <DownloadBtn>Download Notes</DownloadBtn>
           </ChapterCard>
 
+          {/* Chapter 4 */}
+          <ChapterCard>
+            <ChapterTitle>Chapter 4: Carbon and its Compounds</ChapterTitle>
+            <ImportantPoints>
+              <h3>Key Topics:</h3>
+              <TopicList>
+                <TopicItem>Bonding in Carbon Compounds</TopicItem>
+                <TopicItem>Saturated and Unsaturated Carbon Compounds</TopicItem>
+                <TopicItem>Functional Groups</TopicItem>
+                <TopicItem>Alcohols, Carboxylic Acids, and Ethers</TopicItem>
+              </TopicList>
+            </ImportantPoints>
+            <DownloadBtn>Download Notes</DownloadBtn>
+          </ChapterCard>
+
+          {/* Chapter 5 */}
+          <ChapterCard>
+            <ChapterTitle>Chapter 5: Life Processes</ChapterTitle>
+            <ImportantPoints>
+              <h3>Key Topics:</h3>
+              <TopicList>
+                <TopicItem>Nutrition in Plants and Animals</TopicItem>
+                <TopicItem>Respiration</TopicItem>
+                <TopicItem>Transportation in Plants and Animals</TopicItem>
+                <TopicItem>Excretion in Plants and Animals</TopicItem>
+              </TopicList>
+            </ImportantPoints>
+            <DownloadBtn>Download Notes</DownloadBtn>
+          </ChapterCard>
+
           <ChatButton id="xx" onClick={handleStartChat}>
             Go to Chat
             {hasNewMessage && <ButtonNotificationDot />}
@@ -162,6 +199,7 @@ const Container = styled.div`
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+  overflow-y: auto;
 `;
 
 const ChapterList = styled.div`
@@ -169,6 +207,7 @@ const ChapterList = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
 `;
 
 const ChapterCard = styled.div`
